@@ -87,16 +87,47 @@ async function minimaxFetch(path, options = {}) {
 
 function normalizeOrganisation(row) {
   const organisation = row?.Organisation ?? {};
-  const address = organisation?.Address ?? row?.OrganisationAddress ?? {};
+  const address = organisation?.Address ?? row?.OrganisationAddress ?? row?.Address ?? {};
   return {
     id: organisation.ID ?? row?.OrganisationID,
     name: organisation.Name ?? "Nepoznato",
-    taxNumber: organisation.TaxNumber ?? organisation.VatNumber ?? organisation?.RegistrationNumber ?? null,
+    taxNumber:
+      organisation.TaxNumber ??
+      organisation.VatNumber ??
+      organisation?.RegistrationNumber ??
+      organisation.Oib ??
+      null,
     street: address.Street ?? address.AddressLine1 ?? null,
     city: address.City ?? null,
     postalCode: address.PostalCode ?? address.Zip ?? null,
     country: address.Country ?? null
   };
+}
+
+export async function fetchOrganisationDetails(orgId) {
+  if (!orgId) {
+    return null;
+  }
+
+  let data;
+  try {
+    data = await minimaxFetch(`/api/orgs/${orgId}`);
+  } catch (error) {
+    if (error?.message?.includes(" 404 ")) {
+      return null;
+    }
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  if (data.Organisation || data.OrganisationAddress) {
+    return normalizeOrganisation(data);
+  }
+
+  return normalizeOrganisation({ Organisation: data });
 }
 
 export async function getOrganisations() {
@@ -106,8 +137,11 @@ export async function getOrganisations() {
 }
 
 export async function getOrganisationById(orgId) {
-  const organisations = await getOrganisations();
-  return organisations.find(org => String(org.id) === String(orgId)) ?? null;
+  if (!orgId) {
+    return null;
+  }
+
+  return fetchOrganisationDetails(orgId);
 }
 
 export { authenticate };
