@@ -2,6 +2,7 @@ import { Router } from "express";
 import { promises as fs } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 import { getOrganisationById } from "../utils/minimaxClient.js";
 
@@ -78,7 +79,13 @@ router.post("/generate", async (req, res, next) => {
 
       throw error;
     }
-    const generated = renderTemplate(templateBinary, {
+    const zip = new PizZip(templateBinary);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true
+    });
+
+    doc.render({
       employer_name: organisation.name,
       employer_tax_number: organisation.taxNumber ?? "",
       employer_address: [organisation.street, organisation.postalCode, organisation.city]
@@ -96,6 +103,8 @@ router.post("/generate", async (req, res, next) => {
       probation_period: probationPeriod ?? "",
       notes: notes ?? ""
     });
+
+    const generated = doc.getZip().generate({ type: "nodebuffer" });
     const filename = `Ugovor_${sanitiseFilenamePart(employeeName)}`;
 
     res.setHeader(
@@ -110,36 +119,3 @@ router.post("/generate", async (req, res, next) => {
 });
 
 export default router;
-
-function renderTemplate(binary, variables) {
-  const zip = new PizZip(binary);
-  const documentFile = zip.file("word/document.xml");
-
-  if (!documentFile) {
-    throw new Error("Predložak ugovora nema očekivani document.xml sadržaj.");
-  }
-
-  const xml = documentFile.asText();
-  const replaced = Object.entries(variables).reduce((current, [key, value]) => {
-    const normalisedValue = value == null ? "" : String(value);
-    const escapedValue = escapeXml(normalisedValue);
-    const pattern = new RegExp(`{{\\s*${escapeRegExp(key)}\\s*}}`, "g");
-    return current.replace(pattern, escapedValue);
-  }, xml);
-
-  zip.file("word/document.xml", replaced);
-  return zip.generate({ type: "nodebuffer" });
-}
-
-function escapeXml(value) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}

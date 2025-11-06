@@ -1,6 +1,6 @@
 # Generator ugovora o radu za Minimax
 
-Full-stack aplikacija (Express + React) koja omogućuje odabir poslodavca iz Minimax API-ja, unos podataka o zaposleniku i automatsko generiranje .docx ugovora korištenjem jednostavne placeholder zamjene (PizZip + XML rewrite).
+Full-stack aplikacija (Express + React) koja omogućuje odabir poslodavca iz Minimax API-ja, unos podataka o zaposleniku i automatsko generiranje .docx ugovora koristeći Docxtemplater.
 
 ## Struktura projekta
 
@@ -93,8 +93,6 @@ Prima JSON tijelo s podacima forme (ID poslodavca + detalji zaposlenika) i vrać
 ## Špranca dokumenta
 
 Repozitorij ne uključuje binarne Word datoteke. Preuzmi/izradi vlastitu šprancu (npr. `Ugovor_template.docx`), postavi placeholder varijable (`{{employer_name}}`, `{{employee_name}}`, …) i spremi je na lokaciju definiranu varijablom `CONTRACT_TEMPLATE_PATH` (zadano `server/templates/Ugovor_template.docx`).
-
-> Savjet: Placeholdere unesi kao običan tekst bez dodatnog formatiranja ili prijeloma riječi kako bi ostali u jednom `w:t` čvoru i mogli biti zamijenjeni u potpunosti.
 
 ## Napomene
 
