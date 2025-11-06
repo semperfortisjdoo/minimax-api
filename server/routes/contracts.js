@@ -82,13 +82,25 @@ router.post("/generate", async (req, res, next) => {
     const zip = new PizZip(templateBinary);
     const doc = new Docxtemplater(zip, {
       paragraphLoop: true,
-      linebreaks: true
+      linebreaks: true,
+      nullGetter: () => ""
     });
 
-    doc.render({
-      employer_name: organisation.name,
-      employer_tax_number: organisation.taxNumber ?? "",
-      employer_address: [organisation.street, organisation.postalCode, organisation.city]
+    const employer = {
+      name: organisation.name ?? "",
+      taxNumber: organisation.taxNumber ?? "",
+      address: {
+        street: organisation.street ?? "",
+        postalCode: organisation.postalCode ?? "",
+        city: organisation.city ?? "",
+        country: organisation.country ?? ""
+      }
+    };
+
+    const templateData = {
+      employer_name: employer.name,
+      employer_tax_number: employer.taxNumber,
+      employer_address: [employer.address.street, employer.address.postalCode, employer.address.city]
         .filter(Boolean)
         .join(", "),
       employee_name: employeeName,
@@ -101,8 +113,12 @@ router.post("/generate", async (req, res, next) => {
       end_date: endDate ?? "",
       working_hours: workingHours ?? "Puno radno vrijeme",
       probation_period: probationPeriod ?? "",
-      notes: notes ?? ""
-    });
+      notes: notes ?? "",
+      employer
+    };
+
+    doc.setData(templateData);
+    doc.render();
 
     const generated = doc.getZip().generate({ type: "nodebuffer" });
     const filename = `Ugovor_${sanitiseFilenamePart(employeeName)}`;
