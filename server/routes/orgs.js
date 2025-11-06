@@ -19,15 +19,15 @@ router.get("/:orgId", async (req, res, next) => {
       res.status(404).json({ message: "Organizacija nije pronađena." });
       return;
     }
-    res.json({ organisation });
+    const enrichedOrganisation = {
+      ...organisation,
+      taxNumber: organisation.taxNumber ?? null,
+      street: organisation.street ?? null,
+      postalCode: organisation.postalCode ?? null,
+      city: organisation.city ?? null
+    };
+    res.json({ organisation: enrichedOrganisation });
   } catch (error) {
-    if (error.name === "OrganisationFetchError" || error.name === "OrganisationDetailsError") {
-      res.status(502).json({
-        message: "Neuspjelo dohvaćanje podataka o poslodavcu. Provjeri Minimax API postavke.",
-        details: error.details ?? error.attempts ?? error.summary ?? undefined
-      });
-      return;
-    }
     next(error);
   }
 });
