@@ -1,40 +1,49 @@
 # Predložak ugovora
 
-Repozitorij očekuje da je Word špranca (`Ugovor_template.docx`) dostupna u ovoj mapi. Ako želiš koristiti vlastitu verziju ili ju držati na drugoj lokaciji, postavi varijablu okruženja `CONTRACT_TEMPLATE_PATH`:
+Ova mapa nije verzionirana s binarnim `.docx` datotekama. Prije pokretanja aplikacije dodaj vlastitu Word šprancu za ugovor o radu i postavi varijable u obliku `{{placeholder}}` (npr. `{{employer_name}}`).
+
+Zadana očekivana putanja je `server/templates/Ugovor_template.docx`. Možeš promijeniti lokaciju tako da u `.env` datoteku dodaš:
 
 ```
 CONTRACT_TEMPLATE_PATH=put/do/tvog/Ugovor_template.docx
 ```
 
-Placeholder varijable pišu se u obliku `{{placeholder}}` (npr. `{{employer_name}}`). Aplikacija puni sljedeće vrijednosti:
+Ako datoteka ne postoji, backend će vratiti HTTP 500 s opisom problema.
 
-| Placeholder                     | Opis                                                                     |
-|---------------------------------|--------------------------------------------------------------------------|
-| `{{employer_name}}`             | Naziv poslodavca.                                                         |
-| `{{employer_tax_number}}`       | OIB / porezni broj poslodavca.                                            |
-| `{{employer_address}}`          | Spajanje ulice, poštanskog broja, grada i države poslodavca.             |
-| `{{employer.name}}`             | Isto kao gore, dostupno u ugniježđenom objektu.                           |
-| `{{employer.taxNumber}}`        | Porezni broj kroz ugniježđenu strukturu.                                  |
-| `{{employer.address.street}}`   | Ulica i broj.                                                             |
-| `{{employer.address.postalCode}}` | Poštanski broj.                                                         |
-| `{{employer.address.city}}`     | Grad.                                                                     |
-| `{{employer.address.country}}`  | Država.                                                                   |
-| `{{employer.address.full}}`     | Ulica, poštanski broj, grad i država u jednoj liniji.                     |
-| `{{employee_name}}`             | Ime i prezime zaposlenika.                                               |
-| `{{employee_address}}`          | Adresa zaposlenika.                                                       |
-| `{{employee.name}}`             | Ugniježđeno ime zaposlenika.                                             |
-| `{{employee.address}}`          | Ugniježđena adresa zaposlenika.                                          |
-| `{{contract_type}}`             | Vrsta ugovora.                                                            |
-| `{{position}}`                  | Radno mjesto.                                                             |
-| `{{salary}}`                    | Iznos plaće.                                                              |
-| `{{currency}}`                  | Valuta (zadano EUR).                                                      |
-| `{{start_date}}`                | Datum početka rada.                                                       |
-| `{{end_date}}`                  | Datum završetka ako je popunjen.                                          |
-| `{{working_hours}}`             | Radno vrijeme.                                                            |
-| `{{probation_period}}`          | Probni rok.                                                               |
-| `{{notes}}`                     | Dodatne napomene.                                                         |
-| `{{contract.*}}`                | Iste vrijednosti dostupne su kroz objekt `contract` (npr. `{{contract.type}}`). |
+## Dostupni placeholderi
 
-Ako placeholder nije prisutan u podacima, u dokumentu će se pojaviti prazni string (zahvaljujući `nullGetter` postavci u Docxtemplateru).
+Backend popunjava sljedeće placeholdere u predlošku:
 
-Ako datoteka ne postoji, backend će vratiti HTTP 500 s opisom problema prilikom generiranja ugovora.
+### Ravninski (flat) placeholderi
+
+| Placeholder | Opis |
+| --- | --- |
+| `{{employer_name}}` | Naziv poslodavca. |
+| `{{employer_tax_number}}` | OIB poslodavca. |
+| `{{employer_address}}` | Puna adresa poslodavca u jednoj liniji (`ulica, poštanski broj, grad`). |
+| `{{employee_name}}` | Ime i prezime zaposlenika. |
+| `{{employee_address}}` | Adresa zaposlenika. |
+| `{{contract_type}}` | Vrsta ugovora (npr. na određeno). |
+| `{{position}}` | Radno mjesto. |
+| `{{salary}}` | Iznos bruto plaće. |
+| `{{currency}}` | Valuta isplate (zadano `EUR`). |
+| `{{start_date}}` | Datum početka rada. |
+| `{{end_date}}` | Datum završetka ugovora (može biti prazan). |
+| `{{working_hours}}` | Opis radnog vremena (zadano "Puno radno vrijeme"). |
+| `{{probation_period}}` | Trajanje probnog rada (može biti prazno). |
+| `{{notes}}` | Dodatne napomene (može biti prazno). |
+
+### Ugniježđeni placeholderi
+
+Osim ravninskih placeholdera, moguće je koristiti i ugniježđenu strukturu `{{employer.*}}`:
+
+| Placeholder | Opis |
+| --- | --- |
+| `{{employer.name}}` | Naziv poslodavca. |
+| `{{employer.taxNumber}}` | OIB poslodavca. |
+| `{{employer.address.street}}` | Ulica i kućni broj poslodavca. |
+| `{{employer.address.postalCode}}` | Poštanski broj poslodavca. |
+| `{{employer.address.city}}` | Grad poslodavca. |
+| `{{employer.address.country}}` | Država poslodavca. |
+
+Svi nepostojeći ili prazni podaci zamjenjuju se praznim stringom, pa se u predlošku ne pojavljuju Docxtemplater greške (`MultiError`).
