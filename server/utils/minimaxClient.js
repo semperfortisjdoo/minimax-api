@@ -85,87 +85,49 @@ async function minimaxFetch(path, options = {}) {
   return response.json();
 }
 
-function normalizeOrganisation(record) {
-  const organisation =
-    record?.Organisation ??
-    record?.organisation ??
-    record?.OrganisationInfo ??
-    record?.OrganisationData ??
-    record?.Data?.Organisation ??
-    record?.Data ??
-    record?.data?.Organisation ??
-    record?.data ??
-    record ?? {};
-
-  const address =
-    organisation?.Address ??
-    organisation?.RegisteredAddress ??
-    organisation?.RegisteredOfficeAddress ??
-    organisation?.BusinessAddress ??
-    organisation?.HeadquartersAddress ??
-    record?.OrganisationAddress ??
-    record?.Address ??
-    record?.Data?.Address ??
-    {};
-
-  const street =
-    address.Street ??
-    address.StreetAndNumber ??
-    address.StreetName ??
-    address.AddressLine1 ??
-    address.Line1 ??
-    address.Address ??
-    address.Street1 ??
-    address.Address1 ??
-    null;
-
-  const postalCode =
-    address.PostalCode ??
-    address.Zip ??
-    address.PostCode ??
-    address.PostNumber ??
-    address.ZipCode ??
-    null;
-
-  const city =
-    address.City ??
-    address.Town ??
-    address.CityName ??
-    address.Place ??
-    null;
-
-  const country =
-    address.Country ??
-    address.CountryCode ??
-    address.CountryName ??
-    null;
-
-  const rawId =
-    organisation.ID ??
-    record?.OrganisationID ??
-    organisation?.OrganisationID ??
-    record?.ID ??
-    null;
-
+function normalizeOrganisation(row) {
+  const organisation = row?.Organisation ?? {};
+  const address = organisation?.Address ?? row?.OrganisationAddress ?? row?.Address ?? {};
   return {
-    id: rawId == null ? null : String(rawId),
+    id: organisation.ID ?? row?.OrganisationID,
     name: organisation.Name ?? "Nepoznato",
     taxNumber:
       organisation.TaxNumber ??
       organisation.VatNumber ??
-      organisation.RegistrationNumber ??
-      organisation?.OIB ??
-      organisation?.Oib ??
-      organisation?.TaxID ??
-      organisation?.TaxId ??
-      organisation?.IdentificationNumber ??
+      organisation?.RegistrationNumber ??
+      organisation.Oib ??
       null,
-    street,
-    city,
-    postalCode,
-    country,
-    fullAddress: [street, postalCode, city, country].filter(Boolean).join(", ")
+    street: address.Street ?? address.AddressLine1 ?? null,
+    city: address.City ?? null,
+    postalCode: address.PostalCode ?? address.Zip ?? null,
+    country: address.Country ?? null
   };
+}
+
+export async function fetchOrganisationDetails(orgId) {
+  if (!orgId) {
+    return null;
+  }
+
+  let data;
+  try {
+    data = await minimaxFetch(`/api/orgs/${orgId}`);
+  } catch (error) {
+    if (error?.message?.includes(" 404 ")) {
+      return null;
+    }
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  if (data.Organisation || data.OrganisationAddress) {
+    return normalizeOrganisation(data);
+  }
+
+  return normalizeOrganisation({ Organisation: data });
 }
 
 export async function getOrganisations() {
@@ -174,41 +136,12 @@ export async function getOrganisations() {
   return rows.map(normalizeOrganisation).filter(org => org.id);
 }
 
-export async function fetchOrganisationDetails(orgId) {
-  if (!orgId) {
-    throw new Error("Organisation ID is required");
-  }
-
-  const data = await minimaxFetch(`/api/orgs/${orgId}`);
-  const organisationRecord = Array.isArray(data?.Rows) && data.Rows.length > 0 ? data.Rows[0] : data;
-  const organisation = normalizeOrganisation(organisationRecord);
-
-  if (!organisation.id) {
-    organisation.id = String(orgId);
-  }
-
-  return organisation;
-}
-
 export async function getOrganisationById(orgId) {
   if (!orgId) {
     return null;
   }
 
-  try {
-    const detailed = await fetchOrganisationDetails(orgId);
-    if (detailed?.id) {
-      return detailed;
-    }
-  } catch (error) {
-    // Fallback to summary list only when the detail endpoint returns 404.
-    if (!String(error?.message ?? "").includes("404")) {
-      throw error;
-    }
-  }
-
-  const organisations = await getOrganisations();
-  return organisations.find(org => String(org.id) === String(orgId)) ?? null;
+  return fetchOrganisationDetails(orgId);
 }
 
 export { authenticate };

@@ -22,27 +22,18 @@ const DEFAULT_FORM = {
   notes: ""
 };
 
-function ContractForm({
-  organisations,
-  selectedOrganisationId,
-  selectedOrganisation,
-  onOrganisationChange,
-  onGenerate
-}) {
+function ContractForm({ organisations, selectedOrganisation, onOrganisationChange, onGenerate }) {
   const [formData, setFormData] = useState(DEFAULT_FORM);
 
   useEffect(() => {
-    const normalisedId = selectedOrganisationId ? String(selectedOrganisationId) : "";
-    setFormData((prev) => {
-      if (prev.employerId === normalisedId) {
-        return prev;
-      }
-      return {
-        ...prev,
-        employerId: normalisedId
-      };
-    });
-  }, [selectedOrganisationId]);
+    if (!selectedOrganisation) {
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      employerId: String(selectedOrganisation.id)
+    }));
+  }, [selectedOrganisation]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -87,7 +78,7 @@ function ContractForm({
         >
           <option value="">-- Odaberi poslodavca --</option>
           {organisations.map((org) => (
-            <option key={org.id} value={String(org.id)}>
+            <option key={org.id} value={org.id}>
               {org.name}
             </option>
           ))}
@@ -101,12 +92,7 @@ function ContractForm({
           </p>
           <p>
             <strong>Adresa:</strong>{" "}
-            {selectedOrganisation.fullAddress || [
-              selectedOrganisation.street,
-              selectedOrganisation.postalCode,
-              selectedOrganisation.city,
-              selectedOrganisation.country
-            ]
+            {[selectedOrganisation.street, selectedOrganisation.postalCode, selectedOrganisation.city]
               .filter(Boolean)
               .join(", ") || "N/A"}
           </p>

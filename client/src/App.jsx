@@ -4,7 +4,6 @@ import { fetchOrganisations, fetchOrganisationDetails, generateContract } from "
 
 function App() {
   const [organisations, setOrganisations] = useState([]);
-  const [selectedOrganisationId, setSelectedOrganisationId] = useState("");
   const [selectedOrganisation, setSelectedOrganisation] = useState(null);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
   const [error, setError] = useState(null);
@@ -35,12 +34,6 @@ function App() {
   }, []);
 
   const handleOrganisationChange = async (orgId) => {
-    if (orgId && orgId === selectedOrganisationId) {
-      return;
-    }
-
-    setSelectedOrganisationId(orgId);
-
     if (!orgId) {
       setSelectedOrganisation(null);
       return;
@@ -80,7 +73,6 @@ function App() {
       ) : (
         <ContractForm
           organisations={organisations}
-          selectedOrganisationId={selectedOrganisationId}
           selectedOrganisation={selectedOrganisation}
           onOrganisationChange={handleOrganisationChange}
           onGenerate={handleGenerate}
