@@ -2,8 +2,8 @@ import { Router } from "express";
 import { promises as fs } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
+import PizZip from "pizzip";
 import { getOrganisationById } from "../utils/minimaxClient.js";
 
 const router = Router();
@@ -79,63 +79,48 @@ router.post("/generate", async (req, res, next) => {
 
       throw error;
     }
-    const employerAddress = {
-      street: organisation.street ?? "",
-      postalCode: organisation.postalCode ?? "",
-      city: organisation.city ?? "",
-      country: organisation.country ?? "",
-      full: [organisation.street, organisation.postalCode, organisation.city, organisation.country]
-        .filter(Boolean)
-        .join(", ")
+    const zip = new PizZip(templateBinary);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      nullGetter: () => ""
+    });
+
+    const employer = {
+      name: organisation.name ?? "",
+      taxNumber: organisation.taxNumber ?? "",
+      address: {
+        street: organisation.street ?? "",
+        postalCode: organisation.postalCode ?? "",
+        city: organisation.city ?? "",
+        country: organisation.country ?? ""
+      }
     };
 
     const templateData = {
-      employer_name: organisation.name ?? "",
-      employer_tax_number: organisation.taxNumber ?? "",
-      employer_address: employerAddress.full,
-      employer: {
-        name: organisation.name ?? "",
-        taxNumber: organisation.taxNumber ?? "",
-        address: employerAddress
-      },
+      employer_name: employer.name,
+      employer_tax_number: employer.taxNumber,
+      employer_address: [employer.address.street, employer.address.postalCode, employer.address.city]
+        .filter(Boolean)
+        .join(", "),
       employee_name: employeeName,
       employee_address: employeeAddress ?? "",
-      employee: {
-        name: employeeName,
-        address: employeeAddress ?? ""
-      },
       contract_type: contractType,
-      position,
-      salary,
+      position: position,
+      salary: salary,
       currency: currency ?? "EUR",
       start_date: startDate,
       end_date: endDate ?? "",
       working_hours: workingHours ?? "Puno radno vrijeme",
       probation_period: probationPeriod ?? "",
       notes: notes ?? "",
-      contract: {
-        type: contractType,
-        position,
-        salary,
-        currency: currency ?? "EUR",
-        startDate,
-        endDate: endDate ?? "",
-        workingHours: workingHours ?? "Puno radno vrijeme",
-        probationPeriod: probationPeriod ?? "",
-        notes: notes ?? ""
-      }
+      employer
     };
 
-    let generatedBuffer;
-    try {
-      generatedBuffer = renderTemplate(templateBinary, templateData);
-    } catch (error) {
-      res.status(500).json({
-        message: "Dogodila se greška prilikom generiranja ugovora.",
-        details: error.message
-      });
-      return;
-    }
+    doc.setData(templateData);
+    doc.render();
+
+    const generated = doc.getZip().generate({ type: "nodebuffer" });
     const filename = `Ugovor_${sanitiseFilenamePart(employeeName)}`;
 
     res.setHeader(
@@ -143,34 +128,10 @@ router.post("/generate", async (req, res, next) => {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     );
     res.setHeader("Content-Disposition", `attachment; filename=${filename}.docx`);
-    res.send(generatedBuffer);
+    res.send(generated);
   } catch (error) {
     next(error);
   }
 });
 
 export default router;
-
-function renderTemplate(binary, variables) {
-  const zip = new PizZip(binary);
-  let doc;
-  try {
-    doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true,
-      nullGetter: () => ""
-    });
-  } catch (error) {
-    throw new Error(`Neispravan DOCX predložak: ${error.message}`);
-  }
-
-  doc.setData(variables);
-
-  try {
-    doc.render();
-  } catch (error) {
-    throw new Error(`Predložak se nije mogao obraditi: ${error.message}`);
-  }
-
-  return doc.getZip().generate({ type: "nodebuffer" });
-}

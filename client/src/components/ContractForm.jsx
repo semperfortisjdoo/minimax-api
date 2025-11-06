@@ -78,7 +78,7 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
         >
           <option value="">-- Odaberi poslodavca --</option>
           {organisations.map((org) => (
-            <option key={org.id} value={String(org.id)}>
+            <option key={org.id} value={org.id}>
               {org.name}
             </option>
           ))}
