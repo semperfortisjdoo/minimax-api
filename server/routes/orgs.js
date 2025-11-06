@@ -19,7 +19,14 @@ router.get("/:orgId", async (req, res, next) => {
       res.status(404).json({ message: "Organizacija nije pronađena." });
       return;
     }
-    res.json({ organisation });
+    const enrichedOrganisation = {
+      ...organisation,
+      taxNumber: organisation.taxNumber ?? null,
+      street: organisation.street ?? null,
+      postalCode: organisation.postalCode ?? null,
+      city: organisation.city ?? null
+    };
+    res.json({ organisation: enrichedOrganisation });
   } catch (error) {
     next(error);
   }

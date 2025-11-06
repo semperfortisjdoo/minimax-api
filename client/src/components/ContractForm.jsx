@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const CONTRACT_TYPES = [
   "Ugovor na neodređeno",
@@ -22,72 +22,24 @@ const DEFAULT_FORM = {
   notes: ""
 };
 
-function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
+function ContractForm({ organisations, selectedOrganisation, onOrganisationChange, onGenerate }) {
   const [formData, setFormData] = useState(DEFAULT_FORM);
-  const [selectedOrganisation, setSelectedOrganisation] = useState(null);
-
-  const organisationsById = useMemo(() => {
-    const map = new Map();
-    organisations.forEach((org) => {
-      if (org?.id != null) {
-        map.set(String(org.id), org);
-      }
-    });
-    return map;
-  }, [organisations]);
 
   useEffect(() => {
-    const employerId = formData.employerId;
-    if (!employerId) {
-      setSelectedOrganisation(null);
+    if (!selectedOrganisation) {
       return;
     }
-
-    const baseOrganisation = organisationsById.get(String(employerId));
-    if (!baseOrganisation) {
-      setSelectedOrganisation(null);
-      return;
-    }
-
-    setSelectedOrganisation((prev) => {
-      if (prev && prev.id === baseOrganisation.id) {
-        return { ...prev, ...baseOrganisation };
-      }
-      return { ...baseOrganisation };
-    });
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const response = await fetch(`/api/orgs/${encodeURIComponent(baseOrganisation.id)}`);
-        if (!response.ok) {
-          throw new Error(`Neuspjelo dohvaćanje organizacije ${baseOrganisation.id}`);
-        }
-        const data = await response.json();
-        const organisationDetails = data?.organisation ?? {};
-
-        if (!cancelled) {
-          setSelectedOrganisation({ ...baseOrganisation, ...organisationDetails });
-        }
-      } catch (error) {
-        console.error(error);
-        if (!cancelled) {
-          setSelectedOrganisation(baseOrganisation);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [formData.employerId, organisationsById]);
+    setFormData((prev) => ({
+      ...prev,
+      employerId: String(selectedOrganisation.id)
+    }));
+  }, [selectedOrganisation]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (name === "employerId") {
-      onOrganisationChange?.(value);
+      onOrganisationChange(value);
     }
   };
 
@@ -126,7 +78,7 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
         >
           <option value="">-- Odaberi poslodavca --</option>
           {organisations.map((org) => (
-            <option key={org.id} value={String(org.id)}>
+            <option key={org.id} value={org.id}>
               {org.name}
             </option>
           ))}
@@ -135,29 +87,15 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
 
       {selectedOrganisation && (
         <div className="employer-details">
-          {selectedOrganisation.taxNumber && (
-            <p>
-              <strong>OIB:</strong> {selectedOrganisation.taxNumber}
-            </p>
-          )}
-          {(() => {
-            const parts = [
-              selectedOrganisation.street,
-              selectedOrganisation.postalCode,
-              selectedOrganisation.city,
-              selectedOrganisation.country
-            ].filter(Boolean);
-
-            if (parts.length === 0) {
-              return null;
-            }
-
-            return (
-              <p>
-                <strong>Adresa:</strong> {parts.join(", ")}
-              </p>
-            );
-          })()}
+          <p>
+            <strong>OIB:</strong> {selectedOrganisation.taxNumber || "N/A"}
+          </p>
+          <p>
+            <strong>Adresa:</strong>{" "}
+            {[selectedOrganisation.street, selectedOrganisation.postalCode, selectedOrganisation.city]
+              .filter(Boolean)
+              .join(", ") || "N/A"}
+          </p>
         </div>
       )}
 
