@@ -11,11 +11,11 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "docxtemplater": "^3.39.1",
+    "docxtemplater": "^3.43.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "node-fetch": "^3.3.2",
-    "pizzip": "^3.2.4"
+    "pizzip": "^3.1.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.3"
