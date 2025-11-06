@@ -2,8 +2,8 @@ import { Router } from "express";
 import { promises as fs } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
+import PizZip from "pizzip";
 import { getOrganisationById } from "../utils/minimaxClient.js";
 
 const router = Router();
@@ -79,9 +79,13 @@ router.post("/generate", async (req, res, next) => {
 
       throw error;
     }
-    let generatedBuffer;
-    try {
-      generatedBuffer = renderTemplate(templateBinary, {
+    const zip = new PizZip(templateBinary);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true
+    });
+
+    doc.render({
       employer_name: organisation.name,
       employer_tax_number: organisation.taxNumber ?? "",
       employer_address: [organisation.street, organisation.postalCode, organisation.city]
@@ -98,14 +102,9 @@ router.post("/generate", async (req, res, next) => {
       working_hours: workingHours ?? "Puno radno vrijeme",
       probation_period: probationPeriod ?? "",
       notes: notes ?? ""
-      });
-    } catch (error) {
-      res.status(500).json({
-        message: "Dogodila se greška prilikom generiranja ugovora.",
-        details: error.message
-      });
-      return;
-    }
+    });
+
+    const generated = doc.getZip().generate({ type: "nodebuffer" });
     const filename = `Ugovor_${sanitiseFilenamePart(employeeName)}`;
 
     res.setHeader(
@@ -113,33 +112,10 @@ router.post("/generate", async (req, res, next) => {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     );
     res.setHeader("Content-Disposition", `attachment; filename=${filename}.docx`);
-    res.send(generatedBuffer);
+    res.send(generated);
   } catch (error) {
     next(error);
   }
 });
 
 export default router;
-
-function renderTemplate(binary, variables) {
-  const zip = new PizZip(binary);
-  let doc;
-  try {
-    doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true
-    });
-  } catch (error) {
-    throw new Error(`Neispravan DOCX predložak: ${error.message}`);
-  }
-
-  doc.setData(variables);
-
-  try {
-    doc.render();
-  } catch (error) {
-    throw new Error(`Predložak se nije mogao obraditi: ${error.message}`);
-  }
-
-  return doc.getZip().generate({ type: "nodebuffer" });
-}
