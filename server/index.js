@@ -40,3 +40,41 @@ const port = Number.parseInt(process.env.PORT, 10) || 10000;
 app.listen(port, () => {
   console.log(`🚀 Server pokrenut na portu ${port}`);
 });
+
+// === NOVO: Dohvaćanje detalja o jednoj organizaciji ===
+app.get("/api/orgs/:id", async (req, res) => {
+  const orgId = req.params.id;
+
+  try {
+    const token = await getAccessToken();
+    const response = await fetch(
+      `https://moj.minimax.hr/HR/API/api/orgs/${orgId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json"
+        }
+      }
+    );
+
+    if (!response.ok) {
+      return res
+        .status(response.status)
+        .json({ error: "Greška kod dohvaćanja organizacije iz Minimax API-ja" });
+    }
+
+    const data = await response.json();
+    res.json({
+      id: data.ID,
+      name: data.Name,
+      taxNumber: data.TaxNumber,
+      street: data.Address?.Street || "",
+      postalCode: data.Address?.PostalCode || "",
+      city: data.Address?.City || ""
+    });
+  } catch (error) {
+    console.error("Greška kod /api/orgs/:id:", error);
+    res.status(500).json({ error: "Interna greška servera" });
+  }
+});
+

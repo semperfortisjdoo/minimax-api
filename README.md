@@ -1,6 +1,6 @@
 # Generator ugovora o radu za Minimax
 
-Full-stack aplikacija (Express + React) koja omogućuje odabir poslodavca iz Minimax API-ja, unos podataka o zaposleniku i automatsko generiranje .docx ugovora korištenjem Docxtemplatera.
+Full-stack aplikacija (Express + React) koja omogućuje odabir poslodavca iz Minimax API-ja, unos podataka o zaposleniku i automatsko generiranje .docx ugovora koristeći Docxtemplater.
 
 ## Struktura projekta
 
@@ -9,7 +9,7 @@ Full-stack aplikacija (Express + React) koja omogućuje odabir poslodavca iz Min
 ├── server/                # Express backend + integracija s Minimax API-jem
 │   ├── index.js           # Ulazna točka servera
 │   ├── routes/            # REST rute (organizacije, generiranje ugovora)
-│   ├── templates/         # Lokacija za DOCX šprancu (zadano `Ugovor_template.docx`)
+│   ├── templates/         # Lokacija za tvoju DOCX šprancu (nije uključeno u repo)
 │   └── utils/             # klijentski helperi za Minimax
 ├── client/                # Vite + React frontend
 │   └── src/               # UI komponente i API helperi
@@ -50,7 +50,7 @@ Full-stack aplikacija (Express + React) koja omogućuje odabir poslodavca iz Min
 U jednoj terminal sesiji pokreni Express backend:
 
 ```bash
-npm start
+npm run dev
 ```
 
 Backend je dostupan na `http://localhost:10000` (ili port iz `.env`).
@@ -65,10 +65,10 @@ Frontend je dostupan na `http://localhost:5173` i proxyja `/api` pozive prema Ex
 
 ## Produkcija / build
 
-1. Buildaj frontend iz korijena projekta (skripta će instalirati i buildati Vite aplikaciju):
+1. Buildaj frontend:
 
    ```bash
-   npm run build
+   npm run client:build
    ```
 
 2. Pokreni Express u produkcijskom modu:
@@ -92,15 +92,7 @@ Prima JSON tijelo s podacima forme (ID poslodavca + detalji zaposlenika) i vrać
 
 ## Špranca dokumenta
 
-Repozitorij predviđa da se Word špranca (`Ugovor_template.docx`) nalazi u `server/templates/`. Ako želiš koristiti drugu verziju ili lokaciju, postavi varijablu `CONTRACT_TEMPLATE_PATH` tako da pokazuje na željenu datoteku. Placeholder varijable pišu se u obliku `{{employer_name}}`, `{{employee_name}}`, … i mogu biti raspoređene kroz više redova teksta.
-
-## Deploy na Render
-
-1. **Environment varijable:** u Renderovom dashboardu dodaj `client_id`, `client_secret`, `username`, `password`, `MINIMAX_AUTH_URL`, `MINIMAX_API_URL` i (po potrebi) `CONTRACT_TEMPLATE_PATH`. Render automatski dodaje `PORT`, kojeg Express koristi.
-2. **DOCX špranca:** osiguraj da je `server/templates/Ugovor_template.docx` prisutan u repozitoriju ili dodaj vlastiti path preko `CONTRACT_TEMPLATE_PATH`.
-3. **Build command:** `npm install && npm run build` – instalira backend ovisnosti i izgradi React frontend (`client/dist`).
-4. **Start command:** `npm start` – pokreće `server/index.js`.
-5. **Node verzija:** postavi `NODE_VERSION=20` (ili odaberi Node 20 u Render postavkama) kako bi se slagalo s `engines.node`.
+Repozitorij ne uključuje binarne Word datoteke. Preuzmi/izradi vlastitu šprancu (npr. `Ugovor_template.docx`), postavi placeholder varijable (`{{employer_name}}`, `{{employee_name}}`, …) i spremi je na lokaciju definiranu varijablom `CONTRACT_TEMPLATE_PATH` (zadano `server/templates/Ugovor_template.docx`).
 
 ## Napomene
 
