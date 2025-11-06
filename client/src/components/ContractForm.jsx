@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const CONTRACT_TYPES = [
   "Ugovor na neodređeno",
@@ -22,29 +22,47 @@ const DEFAULT_FORM = {
   notes: ""
 };
 
-function ContractForm({ organisations, selectedOrganisation, onOrganisationChange, onGenerate }) {
+function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
   const [formData, setFormData] = useState(DEFAULT_FORM);
+  const [selectedOrganisation, setSelectedOrganisation] = useState(null);
 
-  useEffect(() => {
-    if (!selectedOrganisation) {
-      return;
-    }
-    setFormData((prev) => ({
-      ...prev,
-      employerId: String(selectedOrganisation.id)
-    }));
-  }, [selectedOrganisation]);
-
-  const handleChange = (event) => {
+  const handleChange = async (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
     if (name === "employerId") {
-      onOrganisationChange(value);
+      if (!value) {
+        setSelectedOrganisation(null);
+        onOrganisationChange(null);
+        return;
+      }
+
+      const org = organisations.find((o) => String(o.id) === value);
+      setSelectedOrganisation(org || null);
+      onOrganisationChange(org);
+
+      // Dohvati dodatne detalje iz API-ja
+      try {
+        const res = await fetch(`/api/orgs/${value}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSelectedOrganisation((prev) => ({
+            ...prev,
+            taxNumber: data.taxNumber || prev.taxNumber || "",
+            street: data.street || "",
+            postalCode: data.postalCode || "",
+            city: data.city || ""
+          }));
+        }
+      } catch (err) {
+        console.error("Greška kod dohvaćanja detalja organizacije:", err);
+      }
     }
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
+
     if (!formData.employerId) {
       alert("Odaberi poslodavca iz padajućeg izbornika.");
       return;
@@ -88,13 +106,14 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
       {selectedOrganisation && (
         <div className="employer-details">
           <p>
-            <strong>OIB:</strong> {selectedOrganisation.taxNumber || "N/A"}
+            <strong>OIB:</strong>{" "}
+            {selectedOrganisation.taxNumber || ""}
           </p>
           <p>
             <strong>Adresa:</strong>{" "}
             {[selectedOrganisation.street, selectedOrganisation.postalCode, selectedOrganisation.city]
               .filter(Boolean)
-              .join(", ") || "N/A"}
+              .join(", ")}
           </p>
         </div>
       )}
@@ -111,6 +130,7 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
             required
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="employeeAddress">Adresa zaposlenika</label>
           <input
@@ -122,6 +142,7 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
             placeholder="Ulica i broj, grad"
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="position">Radno mjesto</label>
           <input
@@ -133,6 +154,7 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
             required
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="contractType">Vrsta ugovora</label>
           <select
@@ -148,6 +170,7 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
             ))}
           </select>
         </div>
+
         <div className="form-group">
           <label htmlFor="salary">Plaća</label>
           <input
@@ -161,6 +184,7 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
             required
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="currency">Valuta</label>
           <input
@@ -171,6 +195,7 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
             onChange={handleChange}
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="startDate">Datum početka</label>
           <input
@@ -182,6 +207,7 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
             required
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="endDate">Datum završetka (opcionalno)</label>
           <input
@@ -192,6 +218,7 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
             onChange={handleChange}
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="workingHours">Radno vrijeme</label>
           <input
@@ -202,6 +229,7 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
             onChange={handleChange}
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="probationPeriod">Probni rok</label>
           <input
@@ -226,7 +254,9 @@ function ContractForm({ organisations, selectedOrganisation, onOrganisationChang
         />
       </div>
 
-      <button type="submit" className="primary">Generiraj ugovor</button>
+      <button type="submit" className="primary">
+        Generiraj ugovor
+      </button>
     </form>
   );
 }
