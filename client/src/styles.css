@@ -95,16 +95,6 @@ header h1 {
   margin-bottom: 1rem;
 }
 
-.helper-text {
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
-  color: #475569;
-}
-
-.helper-text.warning {
-  color: #b45309;
-}
-
 .loading {
   text-align: center;
   padding: 2rem;

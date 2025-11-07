@@ -22,6 +22,12 @@ export async function fetchOrganisations() {
   return data.organisations ?? [];
 }
 
+export async function fetchOrganisationDetails(orgId) {
+  const response = await handleResponse(await fetch(`${API_BASE}/orgs/${orgId}`));
+  const data = await response.json();
+  return data.organisation;
+}
+
 export async function generateContract(payload) {
   const response = await handleResponse(
     await fetch(`${API_BASE}/contracts/generate`, {
