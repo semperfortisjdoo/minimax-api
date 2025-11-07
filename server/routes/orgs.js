@@ -19,16 +19,15 @@ router.get("/:orgId", async (req, res, next) => {
       res.status(404).json({ message: "Organizacija nije pronađena." });
       return;
     }
-    res.json({ organisation });
+    const enrichedOrganisation = {
+      ...organisation,
+      taxNumber: organisation.taxNumber ?? null,
+      street: organisation.street ?? null,
+      postalCode: organisation.postalCode ?? null,
+      city: organisation.city ?? null
+    };
+    res.json({ organisation: enrichedOrganisation });
   } catch (error) {
-    if (error.name === "OrganisationFetchError") {
-      res.status(error.statusCode ?? 502).json({
-        message: error.message,
-        ...(error.details ? { details: error.details } : {}),
-        ...(error.summary ? { summary: error.summary } : {})
-      });
-      return;
-    }
     next(error);
   }
 });

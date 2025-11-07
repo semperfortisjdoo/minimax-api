@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useState } from "react";
 
 const CONTRACT_TYPES = [
   "Ugovor na neodređeno",
@@ -25,105 +25,46 @@ const DEFAULT_FORM = {
 function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
   const [formData, setFormData] = useState(DEFAULT_FORM);
   const [selectedOrganisation, setSelectedOrganisation] = useState(null);
-  const [organisationError, setOrganisationError] = useState(null);
-  const [loadingOrganisation, setLoadingOrganisation] = useState(false);
-  const activeRequestRef = useRef(0);
 
-  const organisationsById = useMemo(() => {
-    const map = new Map();
-    organisations.forEach((org) => {
-      if (org?.id != null) {
-        map.set(String(org.id), org);
-      }
-    });
-    return map;
-  }, [organisations]);
-
-  const handleEmployerChange = async (employerId) => {
-    setFormData((prev) => ({ ...prev, employerId }));
-    setOrganisationError(null);
-    onOrganisationChange?.(employerId);
-
-    if (!employerId) {
-      activeRequestRef.current += 1;
-      setSelectedOrganisation(null);
-      setLoadingOrganisation(false);
-      return;
-    }
-
-    const baseOrganisation = organisationsById.get(String(employerId));
-    if (!baseOrganisation) {
-      setSelectedOrganisation(null);
-      setLoadingOrganisation(false);
-      setOrganisationError(
-        "Odabrana organizacija nije pronađena među dohvaćenim podacima. Pokušaj ponovno." 
-      );
-      return;
-    }
-
-    setSelectedOrganisation({ ...baseOrganisation });
-
-    const requestId = activeRequestRef.current + 1;
-    activeRequestRef.current = requestId;
-    setLoadingOrganisation(true);
-
-    try {
-      const response = await fetch(`/api/orgs/${encodeURIComponent(baseOrganisation.id)}`);
-      if (!response.ok) {
-        let message = `Neuspjelo dohvaćanje podataka o poslodavcu (${baseOrganisation.name || baseOrganisation.id}).`;
-        try {
-          const payload = await response.json();
-          if (payload?.message) {
-            message = payload.message;
-          }
-          if (payload?.summary) {
-            message = `${message} (${payload.summary})`;
-          }
-        } catch (parseError) {
-          // ignore JSON parsing issues
-        }
-        throw new Error(message);
-      }
-      const data = await response.json();
-      const organisationDetails = data?.organisation ?? {};
-      if (activeRequestRef.current === requestId) {
-        setSelectedOrganisation({ ...baseOrganisation, ...organisationDetails });
-        setOrganisationError(null);
-      }
-    } catch (error) {
-      console.error(error);
-      if (activeRequestRef.current === requestId) {
-        setSelectedOrganisation({ ...baseOrganisation });
-        setOrganisationError(error.message || "Dohvat podataka o poslodavcu nije uspio.");
-      }
-    } finally {
-      if (activeRequestRef.current === requestId) {
-        setLoadingOrganisation(false);
-      }
-    }
-  };
-
-  const handleChange = (event) => {
+  const handleChange = async (event) => {
     const { name, value } = event.target;
-    if (name === "employerId") {
-      handleEmployerChange(value);
-      return;
-    }
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "employerId") {
+      if (!value) {
+        setSelectedOrganisation(null);
+        onOrganisationChange(null);
+        return;
+      }
+
+      const org = organisations.find((o) => String(o.id) === value);
+      setSelectedOrganisation(org || null);
+      onOrganisationChange(org);
+
+      // Dohvati dodatne detalje iz API-ja
+      try {
+        const res = await fetch(`/api/orgs/${value}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSelectedOrganisation((prev) => ({
+            ...prev,
+            taxNumber: data.taxNumber || prev.taxNumber || "",
+            street: data.street || "",
+            postalCode: data.postalCode || "",
+            city: data.city || ""
+          }));
+        }
+      } catch (err) {
+        console.error("Greška kod dohvaćanja detalja organizacije:", err);
+      }
+    }
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
+
     if (!formData.employerId) {
       alert("Odaberi poslodavca iz padajućeg izbornika.");
-      return;
-    }
-    if (loadingOrganisation) {
-      alert("Pričekaj da se učitaju podaci o poslodavcu prije generiranja ugovora.");
-      return;
-    }
-    if (organisationError) {
-      alert(organisationError);
       return;
     }
     if (!formData.employeeName) {
@@ -152,56 +93,28 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
           value={formData.employerId}
           onChange={handleChange}
           required
-          disabled={loadingOrganisation}
         >
           <option value="">-- Odaberi poslodavca --</option>
           {organisations.map((org) => (
-            <option key={org.id} value={String(org.id)}>
+            <option key={org.id} value={org.id}>
               {org.name}
             </option>
           ))}
         </select>
-        {loadingOrganisation && (
-          <p className="helper-text">Učitavanje podataka o poslodavcu...</p>
-        )}
       </div>
-
-      {organisationError && (
-        <div className="alert" role="alert">
-          {organisationError}
-        </div>
-      )}
 
       {selectedOrganisation && (
         <div className="employer-details">
-          {selectedOrganisation.name && (
-            <p>
-              <strong>Poslodavac:</strong> {selectedOrganisation.name}
-            </p>
-          )}
-          {selectedOrganisation.taxNumber && (
-            <p>
-              <strong>OIB:</strong> {selectedOrganisation.taxNumber}
-            </p>
-          )}
-          {(() => {
-            const parts = [
-              selectedOrganisation.street,
-              selectedOrganisation.postalCode,
-              selectedOrganisation.city,
-              selectedOrganisation.country
-            ].filter(Boolean);
-
-            if (parts.length === 0) {
-              return null;
-            }
-
-            return (
-              <p>
-                <strong>Adresa:</strong> {parts.join(", ")}
-              </p>
-            );
-          })()}
+          <p>
+            <strong>OIB:</strong>{" "}
+            {selectedOrganisation.taxNumber || ""}
+          </p>
+          <p>
+            <strong>Adresa:</strong>{" "}
+            {[selectedOrganisation.street, selectedOrganisation.postalCode, selectedOrganisation.city]
+              .filter(Boolean)
+              .join(", ")}
+          </p>
         </div>
       )}
 
@@ -217,6 +130,7 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
             required
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="employeeAddress">Adresa zaposlenika</label>
           <input
@@ -228,6 +142,7 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
             placeholder="Ulica i broj, grad"
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="position">Radno mjesto</label>
           <input
@@ -239,6 +154,7 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
             required
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="contractType">Vrsta ugovora</label>
           <select
@@ -254,6 +170,7 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
             ))}
           </select>
         </div>
+
         <div className="form-group">
           <label htmlFor="salary">Plaća</label>
           <input
@@ -267,6 +184,7 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
             required
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="currency">Valuta</label>
           <input
@@ -277,6 +195,7 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
             onChange={handleChange}
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="startDate">Datum početka</label>
           <input
@@ -288,6 +207,7 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
             required
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="endDate">Datum završetka (opcionalno)</label>
           <input
@@ -298,6 +218,7 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
             onChange={handleChange}
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="workingHours">Radno vrijeme</label>
           <input
@@ -308,6 +229,7 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
             onChange={handleChange}
           />
         </div>
+
         <div className="form-group">
           <label htmlFor="probationPeriod">Probni rok</label>
           <input
@@ -332,12 +254,8 @@ function ContractForm({ organisations, onOrganisationChange, onGenerate }) {
         />
       </div>
 
-      <button
-        type="submit"
-        className="primary"
-        disabled={loadingOrganisation || Boolean(organisationError)}
-      >
-        {loadingOrganisation ? "Pričekaj..." : "Generiraj ugovor"}
+      <button type="submit" className="primary">
+        Generiraj ugovor
       </button>
     </form>
   );

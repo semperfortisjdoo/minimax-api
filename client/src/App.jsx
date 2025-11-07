@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import ContractForm from "./components/ContractForm.jsx";
-import { fetchOrganisations, generateContract } from "./api.js";
+import { fetchOrganisations, fetchOrganisationDetails, generateContract } from "./api.js";
 
 function App() {
   const [organisations, setOrganisations] = useState([]);
+  const [selectedOrganisation, setSelectedOrganisation] = useState(null);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
   const [error, setError] = useState(null);
 
@@ -32,8 +33,19 @@ function App() {
     };
   }, []);
 
-  const handleOrganisationChange = () => {
-    setError(null);
+  const handleOrganisationChange = async (orgId) => {
+    if (!orgId) {
+      setSelectedOrganisation(null);
+      return;
+    }
+    try {
+      const details = await fetchOrganisationDetails(orgId);
+      setSelectedOrganisation(details);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError("Neuspjelo dohvaćanje podataka o poslodavcu.");
+    }
   };
 
   const handleGenerate = async (formValues) => {
@@ -61,6 +73,7 @@ function App() {
       ) : (
         <ContractForm
           organisations={organisations}
+          selectedOrganisation={selectedOrganisation}
           onOrganisationChange={handleOrganisationChange}
           onGenerate={handleGenerate}
         />
